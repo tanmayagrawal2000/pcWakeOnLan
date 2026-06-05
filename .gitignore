@@ -1,0 +1,17 @@
+# Local Environment Configuration
+.env
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# Python Cache & Compiled Code
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE Settings
+.vscode/
+.idea/
