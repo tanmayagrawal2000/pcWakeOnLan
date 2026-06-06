@@ -1,5 +1,6 @@
 # Local Environment Configuration
 .env
+.message_id
 
 # Virtual Environment
 venv/

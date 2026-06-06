@@ -6,7 +6,9 @@ A lightweight, reliable Discord bot written in Python that allows you to wake up
 
 ## Features
 
-- **Zero Command Setup**: The bot automatically checks your configured Discord channel on startup. If the Wake-on-LAN Control Panel button has not been posted yet, the bot sends it. If it's already there, it does nothing—preventing duplicate messages!
+- **No Privileged Intents Required**: The bot runs using default Discord permissions. You do **not** need to enable any privileged gateway intents (like Message Content Intent) in the Discord Developer Portal.
+- **Zero Command Setup**: The bot automatically checks your configured Discord channel on startup. If the Wake-on-LAN Control Panel button has not been posted yet, it sends it. If it is already there, it registers the persistent button handler without spamming.
+- **Local Message Caching**: Remembers the control panel message ID locally via a `.message_id` file, preventing duplicate posts on bot restarts.
 - **Persistent UI Buttons**: The "Wake Server" button survives bot restarts. Once posted, it remains functional forever.
 - **Native UDP Packets**: Utilizes Python's standard library `socket` implementation—no third-party CLI wrappers required for WOL broadcasts.
 - **Ready for Ubuntu Service**: Easily configured to run in the background 24/7 as a systemd service.
@@ -22,11 +24,10 @@ To host the bot, you must register a new Application with Discord:
 3. Go to the **Bot** tab on the left sidebar:
    - Click **Add Bot** and confirm.
    - Under **Token**, click **Reset Token** and copy the resulting string. **Save this token securely; it is your `DISCORD_TOKEN`.**
-   - Scroll down to **Privileged Gateway Intents** and enable **Message Content Intent** (needed to check if the button message is already in the channel history).
 4. Go to the **OAuth2** tab, then select **URL Generator**:
    - In **Scopes**, check `bot`.
    - In **Bot Permissions**, check:
-     - `Read Message History` (needed to check for existing buttons)
+     - `Read Message History` (needed to check for existing buttons by ID)
      - `Send Messages`
      - `Embed Links`
    - Copy the generated URL at the bottom and open it in a new browser tab to invite the bot to your Discord Server.
@@ -169,8 +170,8 @@ journalctl -u discord-wol.service -f
 ## 🎮 Step 5: How to Use
 
 1. Start the bot on your Ubuntu host machine (using systemd or running `python bot.py`).
-2. When the bot connects to Discord, it will check the last 50 messages in the channel specified by `DISCORD_CHANNEL_ID`.
-3. If it does not find an existing Control Panel post, it will automatically send a message containing the **Wake Server 🖥️** button.
+2. The bot will automatically check if it has a saved `.message_id` file.
+3. If not found or if the message was deleted from Discord, the bot will post the **Wake Server 🖥️** panel and save the new message ID.
 4. Go to that channel in Discord, and click the **Wake Server 🖥️** button!
    - The bot will send a Wake-on-LAN magic packet via UDP broadcast on the Ubuntu host.
    - An ephemeral response (*"Magic packet sent successfully!"*) will appear for you (only you can see this message).

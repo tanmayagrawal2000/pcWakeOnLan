@@ -71,9 +71,8 @@ class WolBot(commands.Bot):
     The main bot class handling application setup, persistence, and auto-posting the button.
     """
     def __init__(self):
-        # Intents default + message_content (needed to search channel history for embeds)
+        # Default intents do NOT require privileged gateway intents (no message_content needed)
         intents = discord.Intents.default()
-        intents.message_content = True
         super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
@@ -89,34 +88,46 @@ class WolBot(commands.Bot):
         if CHANNEL_ID:
             try:
                 channel = self.get_channel(CHANNEL_ID) or await self.fetch_channel(CHANNEL_ID)
-                if hasattr(channel, 'history'):
-                    # Search last 50 messages to see if our control panel is already there
-                    already_posted = False
-                    async for message in channel.history(limit=50):
-                        if message.author.id == self.user.id and message.embeds:
-                            for embed in message.embeds:
-                                if embed.title == "🖥️ Wake-on-LAN Control Panel":
-                                    already_posted = True
-                                    break
-                        if already_posted:
-                            break
+                
+                # Check if we have a locally cached message ID
+                msg_file_path = os.path.join(os.path.dirname(__file__), '.message_id')
+                message_id = None
+                if os.path.exists(msg_file_path):
+                    with open(msg_file_path, 'r') as f:
+                        content = f.read().strip()
+                        if content.isdigit():
+                            message_id = int(content)
+                
+                already_posted = False
+                if message_id:
+                    try:
+                        # Fetch the message by ID to see if it still exists.
+                        # This works without Message Content Intent!
+                        await channel.fetch_message(message_id)
+                        already_posted = True
+                        logger.info("WOL control panel already exists. Skipping post.")
+                    except discord.NotFound:
+                        logger.info("WOL control panel message was deleted. Reposting...")
+                    except Exception as e:
+                        logger.warning(f"Could not verify existing message ID {message_id}: {e}")
+                
+                if not already_posted:
+                    embed = discord.Embed(
+                        title="🖥️ Wake-on-LAN Control Panel",
+                        description="Click the button below to send a Wake-on-LAN magic packet and turn on the server.",
+                        color=discord.Color.dark_green()
+                    )
+                    embed.add_field(name="Target Machine MAC", value=f"`{TARGET_MAC or 'Not Configured'}`", inline=True)
+                    embed.add_field(name="Broadcast Address", value=f"`{BROADCAST_IP}:{WOL_PORT}`", inline=True)
+                    embed.set_footer(text="Wake-on-LAN Discord Bot • Ubuntu Service")
                     
-                    if not already_posted:
-                        embed = discord.Embed(
-                            title="🖥️ Wake-on-LAN Control Panel",
-                            description="Click the button below to send a Wake-on-LAN magic packet and turn on the server.",
-                            color=discord.Color.dark_green()
-                        )
-                        embed.add_field(name="Target Machine MAC", value=f"`{TARGET_MAC or 'Not Configured'}`", inline=True)
-                        embed.add_field(name="Broadcast Address", value=f"`{BROADCAST_IP}:{WOL_PORT}`", inline=True)
-                        embed.set_footer(text="Wake-on-LAN Discord Bot • Ubuntu Service")
+                    message = await channel.send(embed=embed, view=WolView())
+                    logger.info(f"Sent WOL control panel to channel #{channel.name} ({CHANNEL_ID})")
+                    
+                    # Save the message ID locally so we don't repost it on next startup
+                    with open(msg_file_path, 'w') as f:
+                        f.write(str(message.id))
                         
-                        await channel.send(embed=embed, view=WolView())
-                        logger.info(f"Sent WOL control panel to channel #{channel.name} ({CHANNEL_ID})")
-                    else:
-                        logger.info("WOL control panel already exists in the channel. Skipping post.")
-                else:
-                    logger.error(f"Channel with ID {CHANNEL_ID} is not a text channel or cannot read history.")
             except Exception as e:
                 logger.error(f"Failed to check or post WOL panel to channel {CHANNEL_ID}: {e}")
                 
