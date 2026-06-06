@@ -9,6 +9,7 @@ A lightweight, reliable Discord bot written in Python that allows you to wake up
 - **No Privileged Intents Required**: The bot runs using default Discord permissions. You do **not** need to enable any privileged gateway intents (like Message Content Intent) in the Discord Developer Portal.
 - **Zero Command Setup**: The bot automatically checks your configured Discord channel on startup. If the Wake-on-LAN Control Panel button has not been posted yet, it sends it. If it is already there, it registers the persistent button handler without spamming.
 - **Local Message Caching**: Remembers the control panel message ID locally via a `.message_id` file, preventing duplicate posts on bot restarts.
+- **Silent Acknowledgment**: When the "Wake Server" button is clicked, the bot silently executes the packet broadcast and acknowledges Discord. It sends **no** text messages, ephemeral messages, or popups in Discord, keeping the channel completely clean.
 - **Persistent UI Buttons**: The "Wake Server" button survives bot restarts. Once posted, it remains functional forever.
 - **Native UDP Packets**: Utilizes Python's standard library `socket` implementation—no third-party CLI wrappers required for WOL broadcasts.
 - **Ready for Ubuntu Service**: Easily configured to run in the background 24/7 as a systemd service.
@@ -173,5 +174,6 @@ journalctl -u discord-wol.service -f
 2. The bot will automatically check if it has a saved `.message_id` file.
 3. If not found or if the message was deleted from Discord, the bot will post the **Wake Server 🖥️** panel and save the new message ID.
 4. Go to that channel in Discord, and click the **Wake Server 🖥️** button!
-   - The bot will send a Wake-on-LAN magic packet via UDP broadcast on the Ubuntu host.
-   - An ephemeral response (*"Magic packet sent successfully!"*) will appear for you (only you can see this message).
+   - The bot silently sends a Wake-on-LAN magic packet via UDP broadcast on the Ubuntu host.
+   - Nothing is posted to the chat (no messages or popups), keeping the conversation logs entirely clean.
+   - You can review the execution logs on the Ubuntu host via `journalctl -u discord-wol.service -f` to see when users press the button.

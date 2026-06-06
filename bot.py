@@ -39,32 +39,23 @@ class WolView(discord.ui.View):
         custom_id="wake_server_button_v1"
     )
     async def wake_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # 1. Defer interaction to allow processing time
-        await interaction.response.defer(ephemeral=True)
+        # Acknowledge the interaction silently. This tells Discord the interaction succeeded
+        # without sending any chat messages, ephemeral popups, or changing the UI.
+        await interaction.response.edit_message()
         
-        # 2. Check configuration
+        # Check configuration
         if not TARGET_MAC:
-            await interaction.followup.send(
-                "❌ Error: `TARGET_MAC` is not configured on the bot server.", 
-                ephemeral=True
-            )
+            logger.error("Error: `TARGET_MAC` is not configured on the bot server.")
             return
 
         logger.info(f"Wake-on-LAN button clicked by {interaction.user} (ID: {interaction.user.id})")
         
-        # 3. Trigger Wake-on-LAN
+        # Trigger Wake-on-LAN
         try:
             send_wol(TARGET_MAC, BROADCAST_IP, WOL_PORT)
-            await interaction.followup.send(
-                f"✅ Magic packet sent successfully to MAC `{TARGET_MAC}`!", 
-                ephemeral=True
-            )
+            logger.info(f"Magic packet sent successfully to MAC `{TARGET_MAC}`!")
         except Exception as e:
             logger.error(f"Failed to send Wake-on-LAN packet: {e}")
-            await interaction.followup.send(
-                f"❌ Failed to send Wake-on-LAN packet: {str(e)}", 
-                ephemeral=True
-            )
 
 class WolBot(commands.Bot):
     """
@@ -102,7 +93,6 @@ class WolBot(commands.Bot):
                 if message_id:
                     try:
                         # Fetch the message by ID to see if it still exists.
-                        # This works without Message Content Intent!
                         await channel.fetch_message(message_id)
                         already_posted = True
                         logger.info("WOL control panel already exists. Skipping post.")
